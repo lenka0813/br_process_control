@@ -14,6 +14,7 @@ class fusion_node(object):
         self.dim=dim
         self.iter=iter
         self.learning_rate=learning_rate
+        self.belongs=[]
 
     def build(self):
         # cluster center
@@ -49,9 +50,15 @@ class fusion_node(object):
     forward pass
     '''
     def forward(self, input):
-        belongs=activate_fn(self,input)
-        out=np.dot(np.dot(belongs,self.weight),input.T)
-        return out
+        nd=np.shape(input)[0]
+        outs=[]
+        self.belongs=[]
+        for i in range(nd):
+            belong=activate_fn(input)
+            out=np.dot(np.dot(belongs,self.weight),input.T)
+            self.belongs.append(belong)
+            outs.append(out)
+        return outs
     '''
     feed the input data (remain for batch)
     '''
@@ -59,12 +66,32 @@ class fusion_node(object):
         pass
     
     '''
-    weight learning
+    batch weight learning
     '''
     def backfit(self, diff, input=[]):
-        
+
+        nd=np.shape(input)[0]
+        self.c_diff=diff[0]*activate_out*-2*(input[0]-self.center)/self.bais
+        self.b_diff=diff[0]*activate_out*np.sum((x-c)*(x-c),axis=1)/self.bais
+        # update weight
+        self.w_diff=activate_out*input
+
+        for i in range(1:nd):
+            # update center and bais
+            activate_out=activate_fn(input[i])
+            self.c_diff=self.c_diff+diff[i]*activate_out*-2*(input-self.center)/self.bais
+            self.b_diff=self.b_diff+diff[i]*activate_out*np.sum((x-c)*(x-c),axis=1)/self.bais
+            # update weight
+            self. w_diff=self.w_diff+diff[i]*activate_out*input
+
+        # update center and bais
+        self.center=self.center+self.c_diff*self.learning_rate
+        self.bais=self.bais+self.b_diff*self.learning_rate
+
+        # update weight
+        self.weight=self.weight+self.w_diff*self.learning_rate
     
-    def update(self, diff, intput):
+    def update(self, diff, input):
         #do some policy for learning rate
 
         # random grad selection
@@ -86,6 +113,12 @@ class fusion_node(object):
     '''
     tranmit the node diff to previous node
     '''
-    def backfit_front(self):
-        pass
+    def backfit_front(self, diff):
+        nd=np.shape(self.belongs)[0]
+        outs=[]
+        for i in range(nd):
+            out=belong[i]*self.weight*diff[i]
+            outs.append(out)
+        retun outs
+
     
